@@ -56,6 +56,38 @@ def get_latest_temperature(event):
         }
 
 
+def get_temperature_for_day(event, context):
+    # Get current date in 'YYYY-MM-DD' format
+    today_date = datetime.utcnow().strftime('%Y-%m-%d')
+    
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('your_table_name')  # Replace 'your_table_name' with your DynamoDB table name
+    
+    try:
+        response = table.query(
+            KeyConditionExpression='probe = :p and begins_with(#ts, :d)',
+            ExpressionAttributeNames={'#ts': 'timestamp'},
+            ExpressionAttributeValues={
+                ':p': 'your_probe_key_value',  # Replace 'your_probe_key_value' with the desired probe value
+                ':d': today_date
+            }
+        )
+        
+        temperature_values = []
+        for item in response['Items']:
+            temperature_values.append(item['Temperature'])
+        
+        return {
+            'statusCode': 200,
+            'body': temperature_values
+        }
+    
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': f"Error: {e}"
+        }
+
 # CloudWatch logs
 # Latest temp get function
 # Implement packet setup for nodered
