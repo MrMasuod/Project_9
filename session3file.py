@@ -16,6 +16,45 @@ def lambda_handler(event, context):
      'Date': date_string
     }
 
+def get_latest_temperature(event):
+    try:
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table('Dixell_Temp_2')
+        
+        probes = set()  # Set to store unique probe values
+        response = table.scan(
+            ProjectionExpression="#pk",
+            ExpressionAttributeNames={"#pk": "probe"},
+        )
+
+        for item in response['Items']:
+            probes.add(item['probe'])
+
+        latest_items = {}
+        for probe in probes:
+            response = table.query(
+                Limit=1,
+                ScanIndexForward=False,
+                TableName='Dixell_Temp_"',
+                KeyConditionExpression="#pk = :pkval",
+                ExpressionAttributeNames={"#pk": "probe"},
+                ExpressionAttributeValues={":pkval": probe},
+            )
+
+            if 'Items' in response and len(response['Items']) > 0:
+                latest_items[probe] = response['Items'][0]
+
+        return {
+            'statusCode': 200,
+            'body': latest_items
+        }
+
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': f"Error fetching data from DynamoDB: {e}"
+        }
+
 
 # CloudWatch logs
 # Latest temp get function
